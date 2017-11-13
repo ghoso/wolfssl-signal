@@ -7072,7 +7072,6 @@ static int test_wc_CamelliaSetKey (void)
         }
     } /* END bad args. */
 
-    printf(resultFmt, ret == 0 ? passed : failed);
 
 #endif
     return ret;
