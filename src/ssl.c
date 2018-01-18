@@ -20828,7 +20828,6 @@ int wolfSSL_RSA_GenAdd(WOLFSSL_RSA* rsa)
 }
 #endif /* NO_RSA */
 
-#ifdef WOLFSSL_SIGNAL
 int wolfSSL_HMAC_CTX_init(HMAC_CTX* ctx)
 {
     WOLFSSL_MSG("wolfSSL_HMAC_CTX_init");
@@ -20906,10 +20905,15 @@ int wolfSSL_HMAC_Update(WOLFSSL_HMAC_CTX* ctx, const unsigned char* data,
 
     WOLFSSL_MSG("wolfSSL_HMAC_Update");
 
-    if (ctx == NULL || data == NULL) {
-        WOLFSSL_MSG("no ctx or data");
+    if (ctx == NULL) {
+        WOLFSSL_MSG("hmac update no ctx");
         return SSL_FAILURE;
     }
+    if (data == NULL){
+      WOLFSSL_MSG("hmac update no data");
+      return SSL_SUCCESS;
+    }
+
     WOLFSSL_MSG("updating hmac");
     hmac_error = wc_HmacUpdate(&ctx->hmac, data, (word32)len);
     if (hmac_error < 0){
@@ -20973,123 +20977,6 @@ int wolfSSL_HMAC_cleanup(WOLFSSL_HMAC_CTX* ctx)
 
     return SSL_SUCCESS;
 }
-
-#else /* WOLFSSL_SIGNAL */
-
-void wolfSSL_HMAC_CTX_init(HMAC_CTX* ctx)
-{
-    WOLFSSL_MSG("wolfSSL_HMAC_CTX_init");
-    (void) ctx;
-}
-
-
-void wolfSSL_HMAC_Init(WOLFSSL_HMAC_CTX* ctx, const void* key, int keylen,
-                  const EVP_MD* type)
-{
-    WOLFSSL_MSG("wolfSSL_HMAC_Init");
-
-    if (ctx == NULL) {
-        WOLFSSL_MSG("no ctx on init");
-        return;
-    }
-
-    if (type) {
-        WOLFSSL_MSG("init has type");
-
-        if (XSTRNCMP(type, "MD5", 3) == 0) {
-            WOLFSSL_MSG("md5 hmac");
-            ctx->type = WC_MD5;
-        }
-        else if (XSTRNCMP(type, "SHA256", 6) == 0) {
-            WOLFSSL_MSG("sha256 hmac");
-            ctx->type = WC_SHA256;
-        }
-
-        /* has to be last since would pick or 256, 384, or 512 too */
-        else if (XSTRNCMP(type, "SHA", 3) == 0) {
-            WOLFSSL_MSG("sha hmac");
-            ctx->type = WC_SHA;
-        }
-        else {
-            WOLFSSL_MSG("bad init type");
-        }
-    }
-
-    if (key && keylen) {
-        WOLFSSL_MSG("keying hmac");
-
-        if (wc_HmacInit(&ctx->hmac, NULL, INVALID_DEVID) == 0) {
-            wc_HmacSetKey(&ctx->hmac, ctx->type, (const byte*)key,
-                                                        (word32)keylen);
-        }
-        /* OpenSSL compat, no error */
-    }
-}
-
-
-void wolfSSL_HMAC_Init_ex(WOLFSSL_HMAC_CTX* ctx, const void* key, int len,
-                         const EVP_MD* md, void* impl)
-{
-    (void)impl;
-    wolfSSL_HMAC_Init(ctx, key, len, md);
-}
-
-
-void wolfSSL_HMAC_Update(WOLFSSL_HMAC_CTX* ctx, const unsigned char* data,
-                    int len)
-{
-    WOLFSSL_MSG("wolfSSL_HMAC_Update");
-
-    if (ctx && data) {
-        WOLFSSL_MSG("updating hmac");
-        wc_HmacUpdate(&ctx->hmac, data, (word32)len);
-        /* OpenSSL compat, no error */
-    }
-}
-
-
-void wolfSSL_HMAC_Final(WOLFSSL_HMAC_CTX* ctx, unsigned char* hash,
-                   unsigned int* len)
-{
-    WOLFSSL_MSG("wolfSSL_HMAC_Final");
-
-    if (ctx && hash) {
-        WOLFSSL_MSG("final hmac");
-        wc_HmacFinal(&ctx->hmac, hash);
-        /* OpenSSL compat, no error */
-
-        if (len) {
-            WOLFSSL_MSG("setting output len");
-            switch (ctx->type) {
-                case WC_MD5:
-                    *len = WC_MD5_DIGEST_SIZE;
-                    break;
-
-                case WC_SHA:
-                    *len = WC_SHA_DIGEST_SIZE;
-                    break;
-
-                case WC_SHA256:
-                    *len = WC_SHA256_DIGEST_SIZE;
-                    break;
-
-                default:
-                    WOLFSSL_MSG("bad hmac type");
-            }
-        }
-    }
-}
-
-
-void wolfSSL_HMAC_cleanup(WOLFSSL_HMAC_CTX* ctx)
-{
-    WOLFSSL_MSG("wolfSSL_HMAC_cleanup");
-
-    if (ctx)
-        wc_HmacFree(&ctx->hmac);
-}
-
-#endif /* WOLFSSL_SIGNAL */
 
 const WOLFSSL_EVP_MD* wolfSSL_EVP_get_digestbynid(int id)
 {
